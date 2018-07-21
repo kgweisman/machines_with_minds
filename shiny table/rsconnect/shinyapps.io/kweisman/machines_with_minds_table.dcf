@@ -1,0 +1,12 @@
+name: machines_with_minds_table
+title: machines_with_minds_table
+username:
+account: kweisman
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 385397
+bundleId: 1493072
+url: https://kgweisman.shinyapps.io/machines_with_minds_table/
+when: 1532212053.83289
+asMultiple: FALSE
+asStatic: FALSE

@@ -74,12 +74,14 @@ server <- function(input, output) {
   
   # choose columns to display
   output$mytable1 <- DT::renderDataTable({
-    DT::datatable(percentage_tab[, input$show_vars_percentage, drop = FALSE])
+    # DT::datatable(percentage_tab[, input$show_vars_percentage, drop = FALSE])
+    DT::datatable(percentage_tab)
   })
 
   # choose columns to display
   output$mytable2 <- DT::renderDataTable({
-    DT::datatable(mean_tab[, input$show_vars_mean, drop = FALSE])
+    # DT::datatable(mean_tab[, input$show_vars_mean, drop = FALSE])
+    DT::datatable(mean_tab)
   })
   
 }
