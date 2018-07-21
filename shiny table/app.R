@@ -1,9 +1,13 @@
+library(RCurl)
+library(tidyverse)
 library(shiny)
 library(DT)
-library(readxl)
-library(tidyverse)
 
-percentage_tab <- read_excel("/Users/kweisman/Documents/Research (Stanford)/Writing/Robots (CADA)/table_shiny/Machines with minds TABLE.xlsx", sheet = 1) %>%
+percentage_url <- getURL("https://raw.githubusercontent.com/kgweisman/machines_with_minds/master/data/machines_with_minds_table_percentage.csv")
+
+mean_url <- getURL("https://raw.githubusercontent.com/kgweisman/machines_with_minds/master/data/machines_with_minds_table_mean.csv")
+
+percentage_tab <- read.csv(text = percentage_url) %>%
   mutate(Lens = gsub("[:digits:]) ", "", Lens),
          Lens = case_when(grepl("living", Lens) ~ "LIVING CREATURE (bodily)",
                           grepl("social", Lens) ~ "SOCIAL PARTNER (social-emotional)",
@@ -11,8 +15,8 @@ percentage_tab <- read_excel("/Users/kweisman/Documents/Research (Stanford)/Writ
   mutate_at(vars(starts_with("%")),
             funs(. %>% substr(1, 5) %>% as.numeric() %>% round(2) %>% format(nsmall = 2)))
 
-mean_tab <- read_excel("/Users/kweisman/Documents/Research (Stanford)/Writing/Robots (CADA)/table_shiny/Machines with minds TABLE.xlsx", sheet = 2) %>%
-  rename(`Mean (normalized)` = `Mean (normalized 0-1)`) %>%
+mean_tab <- read.csv(text = mean_url) %>%
+  rename(`Mean (normalized)` = `Mean..normalized.0.1.`) %>%
   mutate(Lens = gsub("[:digits:]) ", "", Lens),
          Lens = case_when(grepl("living", Lens) ~ "LIVING CREATURE (bodily)",
                           grepl("social", Lens) ~ "SOCIAL PARTNER (social-emotional)",
