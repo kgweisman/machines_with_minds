@@ -20,6 +20,8 @@ percentage_tab <- read.csv(text = percentage_url) %>%
   filter(!is.na(`Proportion Endorsing`), `Proportion Endorsing` != "") %>%
   mutate_at(vars(starts_with("Proportion")),
             funs(format(., nsmall = 2)))
+
+names(percentage_tab) <- gsub("\\.", " ", names(percentage_tab))
   
 mean_tab <- read.csv(text = mean_url) %>%
   rename(`Mean (Normalized)` = `Mean..normalized.0.1.`) %>%
@@ -31,40 +33,28 @@ mean_tab <- read.csv(text = mean_url) %>%
   filter(!is.na(`Mean (Normalized)`)) %>%
   mutate(`Mean (Normalized)` = format(`Mean (Normalized)`, nsmall = 2))
 
+names(mean_tab) <- gsub("\\.", " ", names(mean_tab))
+
 ui <- fluidPage(
-  title = "Machines with minds: Tables",
+  title = "Examples of DataTables",
   sidebarLayout(
     sidebarPanel(
       conditionalPanel(
         'input.dataset === "percentage_tab"',
-        checkboxGroupInput("show_vars_percentage", 
-                           "Select which colums to display:",
-                           choices = names(percentage_tab),
-                           # choices = c("Lens", "Capacity", "Study",
-                           #             "Age group", "N", "% Endorsing"),
-                           # selected = names(percentage_tab),
-                           selected = c("Lens", "Capacity", "Study",
-                                        "Age group", "N", "Proportion Endorsing"),
-                           width = "200px")
+        checkboxGroupInput("show_vars_percentage", "Select columns to dislay:",
+                           names(percentage_tab), selected = names(percentage_tab))
       ),
       conditionalPanel(
         'input.dataset === "mean_tab"',
-        checkboxGroupInput("show_vars_mean", 
-                           "Select which colums to display:",
-                           choices = names(mean_tab),
-                           # choices = c("Lens", "Capacity", "Study",
-                           #             "Age group", "N", "% Endorsing"),
-                           # selected = names(mean_tab),
-                           selected = c("Lens", "Capacity", "Study",
-                                        "Age group", "N", "Mean (Normalized)"),
-                           width = "200px")
+        checkboxGroupInput("show_vars_mean", "Select columns to dislay:",
+                           names(mean_tab), selected = names(mean_tab))
       )
     ),
     mainPanel(
       tabsetPanel(
         id = 'dataset',
-        tabPanel("percentages", DT::dataTableOutput("mytable1")),
-        tabPanel("means", DT::dataTableOutput("mytable2"))
+        tabPanel("percentage_tab", DT::dataTableOutput("mytable1")),
+        tabPanel("mean_tab", DT::dataTableOutput("mytable2"))
       )
     )
   )
@@ -73,15 +63,15 @@ ui <- fluidPage(
 server <- function(input, output) {
   
   # choose columns to display
+  percentage_tab2 = percentage_tab
   output$mytable1 <- DT::renderDataTable({
-    # DT::datatable(percentage_tab[, input$show_vars_percentage, drop = FALSE])
-    DT::datatable(percentage_tab)
+    DT::datatable(percentage_tab2[, input$show_vars_percentage, drop = FALSE])
   })
-
+  
   # choose columns to display
-  output$mytable2 <- DT::renderDataTable({
-    # DT::datatable(mean_tab[, input$show_vars_mean, drop = FALSE])
-    DT::datatable(mean_tab)
+  mean_tab2 = mean_tab
+  output$mytable1 <- DT::renderDataTable({
+    DT::datatable(mean_tab2[, input$show_vars_mean, drop = FALSE])
   })
   
 }
