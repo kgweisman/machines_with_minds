@@ -1,0 +1,374 @@
+---
+title: "Machines with Minds: "
+output: html_notebook
+---
+
+```{r}
+library(RCurl)
+library(tidyverse)
+library(ggrepel)
+# library(langcog)
+library(cowplot)
+```
+
+```{r}
+# data and formatting
+
+percentage_url <- getURL("https://raw.githubusercontent.com/kgweisman/machines_with_minds/master/data/machines_with_minds_table_percentage.csv")
+
+mean_url <- getURL("https://raw.githubusercontent.com/kgweisman/machines_with_minds/master/data/machines_with_minds_table_mean.csv")
+
+percentage_tab <- read.csv(text = percentage_url) %>%
+  rename(prop_endorse = `X..Endorsing`,
+         prop_ambiv_pretend = `X..Ambivalent.or.Pretending`,
+         prop_reject = `X..Rejecting`) %>%
+  mutate(Lens = gsub("[:digits:]) ", "", Lens),
+         Lens = case_when(grepl("living", Lens) ~ "living_creature",
+                          grepl("social", Lens) ~ "social_partner",
+                          grepl("goal", Lens) ~ "planful_agent")) %>%
+  mutate_at(vars(starts_with("prop_")),
+            funs(gsub("%", "", .) %>% as.numeric()/100)) %>%
+  filter(!is.na(prop_endorse), prop_endorse != "")
+
+names(percentage_tab) <- gsub("\\.", " ", names(percentage_tab))
+
+percentage_tab <- percentage_tab %>%
+  rename(age_group = `Age group`,
+         robot_type = `Robot Type`)
+  
+mean_tab <- read.csv(text = mean_url) %>%
+  rename(mean_normal = `Mean..normalized.0.1.`) %>%
+  mutate(Lens = gsub("[:digits:]) ", "", Lens),
+         Lens = case_when(grepl("living", Lens) ~ "living_creature",
+                          grepl("social", Lens) ~ "social_partner",
+                          grepl("goal", Lens) ~ "planful_agent")) %>%
+  mutate(mean_normal = as.numeric(mean_normal)) %>%
+  filter(!is.na(mean_normal))
+
+names(mean_tab) <- gsub("\\.", " ", names(mean_tab))
+
+mean_tab <- mean_tab %>%
+  rename(age_group = `Age group`,
+         robot_type = `Robot Type`)
+```
+
+# By age group
+
+```{r}
+pos <- position_jitterdodge(dodge.width = 0,
+                            jitter.width = 0.6,
+                            jitter.height = 0)
+
+percentage_tab_labels <- full_join(percentage_tab %>%
+                                     group_by(age_group, Lens) %>%
+                                     slice_max(order_by = prop_endorse, n = 2) %>%
+                                     slice_head(n = 2),
+                                   percentage_tab %>%
+                                     group_by(age_group, Lens) %>%
+                                     slice_min(order_by = prop_endorse, n = 2) %>%
+                                     slice_head(n = 2)) %>%
+  mutate(text = Capacity)
+
+fig_1a <- percentage_tab %>%
+  full_join(percentage_tab_labels) %>%
+  mutate(Lens = gsub("_", " ", Lens),
+         text = ifelse(!is.na(text), text, "")) %>%
+  ggplot(aes(x = Lens, y = prop_endorse, group = Lens, color = Lens)) +
+  facet_grid(cols = vars(age_group)) +
+  geom_point(aes(size = N),
+             alpha = 0.1, 
+             position = pos) +
+  # geom_pointrange(data = . %>%
+  #                   group_by(age_group, Lens) %>%
+  #                   multi_boot_standard(col = "prop_endorse", na.rm = T),
+  #                 aes(ymin = ci_lower, ymax = ci_upper, y = mean, group = Lens),
+  #                 color = "black", shape = 15,
+  #                 position = position_dodge(width = 0.9)) +
+  geom_text_repel(aes(label = text),
+                  min.segment.length = 0, 
+                  max.overlaps = 100,
+                  position = pos, size = 2) +
+  scale_color_brewer(palette = "Dark2") +
+  scale_size_continuous(range = c(0.1, 5), breaks = seq(25, 300, 25)) +
+  scale_y_continuous(labels = scales::percent) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) +
+  labs(x = "Domain of capacity ('lens')", 
+       y = "Percent of participants endorsing capacity",
+       # color = "Domain of capacity ('lens')",
+       size = "Sample size (N)") +
+  guides(#color = guide_legend(override.aes = list(alpha = 1, size = 2)),
+         color = guide_none(),
+         size = guide_legend(override.aes = list(alpha = 0.5)))
+
+fig_1a
+```
+
+```{r}
+pos <- position_jitterdodge(dodge.width = 0,
+                            jitter.width = 0.6,
+                            jitter.height = 0)
+
+mean_tab_labels <- full_join(mean_tab %>%
+                                     group_by(age_group, Lens) %>%
+                                     slice_max(order_by = mean_normal, n = 2) %>%
+                                     slice_head(n = 2),
+                                   mean_tab %>%
+                                     group_by(age_group, Lens) %>%
+                                     slice_min(order_by = mean_normal, n = 2) %>%
+                                     slice_head(n = 2)) %>%
+  mutate(text = Capacity)
+
+fig_1b <- mean_tab %>%
+  full_join(mean_tab_labels) %>%
+  mutate(Lens = gsub("_", " ", Lens),
+         text = ifelse(!is.na(text), text, "")) %>%
+  ggplot(aes(x = Lens, y = mean_normal, group = Lens, color = Lens)) +
+  facet_grid(cols = vars(age_group)) +
+  geom_point(aes(size = N),
+             alpha = 0.1, 
+             position = pos) +
+  # geom_pointrange(data = . %>%
+  #                   group_by(age_group, Lens) %>%
+  #                   multi_boot_standard(col = "mean_normal", na.rm = T),
+  #                 aes(ymin = ci_lower, ymax = ci_upper, y = mean, group = Lens),
+  #                 color = "black", shape = 15,
+  #                 position = position_dodge(width = 0.9)) +
+  geom_text_repel(aes(label = text),
+                  min.segment.length = 0, 
+                  max.overlaps = 100,
+                  position = pos, size = 2) +
+  scale_color_brewer(palette = "Dark2") +
+  scale_size_continuous(range = c(0.1, 5), breaks = seq(25, 300, 25)) +
+  scale_y_continuous(limits = c(0, 1)) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) +
+  labs(x = "Domain of capacity ('lens')", 
+       y = "Mean endorsement (normalized)",
+       # color = "Domain of capacity ('lens')",
+       size = "Sample size (N)") +
+  guides(#color = guide_legend(override.aes = list(alpha = 1, size = 2)),
+         color = guide_none(),
+         size = guide_legend(override.aes = list(alpha = 0.5)))
+
+fig_1b
+```
+
+```{r, fig.width = 4.5, fig.asp = 0.5}
+fig_1 <- plot_grid(fig_1a + guides(size = guide_none()), 
+                   fig_1b + guides(color = guide_legend(override.aes = list(alpha = 1))), 
+                   labels = "AUTO",
+                   nrow = 1, rel_widths = c(0.8, 1))
+fig_1
+
+ggsave("./figures/fig_1.tiff", dpi = 400)
+```
+
+
+
+# By robot type
+
+```{r, fig.width = 6, fig.asp = 0.6}
+pos <- position_jitterdodge(dodge.width = 0,
+                            jitter.width = 0.6,
+                            jitter.height = 0)
+
+percentage_tab_labels <- full_join(percentage_tab %>%
+                                     group_by(age_group, robot_type, Lens) %>%
+                                     slice_max(order_by = prop_endorse, n = 2) %>%
+                                     slice_head(n = 2),
+                                   percentage_tab %>%
+                                     group_by(age_group, robot_type, Lens) %>%
+                                     slice_min(order_by = prop_endorse, n = 2) %>%
+                                     slice_head(n = 2)) %>%
+  mutate(text = Capacity)
+
+percentage_tab %>%
+  full_join(percentage_tab_labels) %>%
+  mutate(Lens = gsub("_", " ", Lens),
+         text = ifelse(!is.na(text), text, "")) %>%
+  mutate(robot_type = recode_factor(robot_type,
+                                    "rover" = "rover",
+                                    "robotic arm" = "robotic arm",
+                                    "dog (remote-controlled)" = "dog (remote-controlled)",
+                                    "dog (autonomous)" = "dog",
+                                    "dog" = "dog",
+                                    "dinosaur" = "dinosaur",
+                                    "humanoid" = "humanoid",
+                                    .default = NA_character_)) %>%
+  # mutate(robot_type = factor(robot_type,
+  #                            levels = c("rover", "robotic arm",
+  #                                       "dog (remote-controlled)",
+  #                                       "dog (autonomous)",
+  #                                       "dog", "dinosaur",
+  #                                       "humanoid"))) %>%
+  filter(!is.na(robot_type)) %>%
+  ggplot(aes(x = Lens, y = prop_endorse, group = Lens, color = Lens)) +
+  facet_grid(rows = vars(age_group),
+             cols = vars(robot_type)) +
+  geom_point(aes(size = N),
+             alpha = 0.2, 
+             position = pos) +
+  # geom_pointrange(data = . %>%
+  #                   group_by(age_group, robot_type, Lens) %>%
+  #                   multi_boot_standard(col = "prop_endorse", na.rm = T),
+  #                 aes(ymin = ci_lower, ymax = ci_upper, y = mean, group = Lens),
+  #                 color = "black", shape = 15,
+  #                 position = position_dodge(width = 0.9)) +
+  geom_text_repel(aes(label = text),
+                  min.segment.length = 0,
+                  max.overlaps = 100,
+                  position = pos, size = 2) +
+  scale_color_brewer(palette = "Dark2") +
+  scale_size_continuous(range = c(0.1, 5), breaks = seq(25, 300, 25)) +
+  scale_y_continuous(labels = scales::percent) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) +
+  labs(x = "Domain of capacity ('lens')", 
+       y = "Percent of participants endorsing capacity",
+       # color = "Domain of capacity ('lens')",
+       size = "Sample size (N)") +
+  guides(#color = guide_legend(override.aes = list(alpha = 1, size = 2)),
+         color = guide_none(),
+         size = guide_legend(override.aes = list(alpha = 0.5)))
+```
+
+```{r, fig.width = 6, fig.asp = 0.3}
+pos <- position_jitterdodge(dodge.width = 0,
+                            jitter.width = 0.6,
+                            jitter.height = 0)
+
+percentage_tab_labels <- full_join(percentage_tab %>%
+                                     group_by(age_group, robot_type, Lens) %>%
+                                     slice_max(order_by = prop_endorse, n = 2) %>%
+                                     slice_head(n = 2),
+                                   percentage_tab %>%
+                                     group_by(age_group, robot_type, Lens) %>%
+                                     slice_min(order_by = prop_endorse, n = 2) %>%
+                                     slice_head(n = 2)) %>%
+  mutate(text = Capacity)
+
+percentage_tab %>%
+  full_join(percentage_tab_labels) %>%
+  mutate(Lens = gsub("_", " ", Lens),
+         text = ifelse(!is.na(text), text, "")) %>%
+  mutate(robot_type = recode_factor(robot_type,
+                                    "rover" = "rover",
+                                    "robotic arm" = "robotic arm",
+                                    "dog (remote-controlled)" = "dog (remote-controlled)",
+                                    "dog (autonomous)" = "dog",
+                                    "dog" = "dog",
+                                    "dinosaur" = "dinosaur",
+                                    "humanoid" = "humanoid",
+                                    .default = NA_character_)) %>%
+  # mutate(robot_type = factor(robot_type,
+  #                            levels = c("rover", "robotic arm",
+  #                                       "dog (remote-controlled)",
+  #                                       "dog (autonomous)",
+  #                                       "dog", "dinosaur",
+  #                                       "humanoid"))) %>%
+  filter(!is.na(robot_type)) %>%
+  filter(age_group == "children") %>%
+  ggplot(aes(x = Lens, y = prop_endorse, group = Lens, color = Lens)) +
+  facet_grid(rows = vars(age_group),
+             cols = vars(robot_type)) +
+  geom_point(aes(size = N),
+             alpha = 0.2, 
+             position = pos) +
+  # geom_pointrange(data = . %>%
+  #                   group_by(age_group, robot_type, Lens) %>%
+  #                   multi_boot_standard(col = "prop_endorse", na.rm = T),
+  #                 aes(ymin = ci_lower, ymax = ci_upper, y = mean, group = Lens),
+  #                 color = "black", shape = 15,
+  #                 position = position_dodge(width = 0.9)) +
+  geom_text_repel(aes(label = text),
+                  min.segment.length = 0,
+                  max.overlaps = 100,
+                  position = pos, size = 2) +
+  scale_color_brewer(palette = "Dark2") +
+  scale_size_continuous(range = c(0.1, 5), breaks = seq(25, 300, 25)) +
+  scale_y_continuous(labels = scales::percent) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) +
+  labs(x = "Domain of capacity ('lens')", 
+       y = "Percent of participants endorsing capacity",
+       # color = "Domain of capacity ('lens')",
+       size = "Sample size (N)") +
+  guides(#color = guide_legend(override.aes = list(alpha = 1, size = 2)),
+         color = guide_none(),
+         size = guide_legend(override.aes = list(alpha = 0.5)))
+
+ggsave("./figures/fig_2.tiff")
+```
+
+```{r, fig.width = 6, fig.asp = 0.6}
+pos <- position_jitterdodge(dodge.width = 0,
+                            jitter.width = 0.6,
+                            jitter.height = 0)
+
+mean_tab_labels <- full_join(mean_tab %>%
+                                     group_by(age_group, robot_type, Lens) %>%
+                                     slice_max(order_by = mean_normal, n = 2) %>%
+                                     slice_head(n = 2),
+                                   mean_tab %>%
+                                     group_by(age_group, robot_type, Lens) %>%
+                                     slice_min(order_by = mean_normal, n = 2) %>%
+                                     slice_head(n = 2)) %>%
+  mutate(text = Capacity)
+
+mean_tab %>%
+  full_join(mean_tab_labels) %>%
+  mutate(Lens = gsub("_", " ", Lens),
+         text = ifelse(!is.na(text), text, "")) %>%
+  mutate(robot_type = factor(robot_type,
+                             levels = c("rover", "robotic arm",
+                                        "dog (remote-controlled)",
+                                        "dog (autonomous)",
+                                        "dog", "dinosaur",
+                                        "humanoid"))) %>%
+  filter(!is.na(robot_type)) %>%
+  ggplot(aes(x = Lens, y = mean_normal, group = Lens, color = Lens)) +
+  facet_grid(rows = vars(age_group),
+             cols = vars(robot_type)) +
+  geom_point(aes(size = N),
+             alpha = 0.2, 
+             position = pos) +
+  # geom_pointrange(data = . %>%
+  #                   group_by(age_group, robot_type, Lens) %>%
+  #                   multi_boot_standard(col = "mean_normal", na.rm = T),
+  #                 aes(ymin = ci_lower, ymax = ci_upper, y = mean, group = Lens),
+  #                 color = "black", shape = 15,
+  #                 position = position_dodge(width = 0.9)) +
+  geom_text_repel(aes(label = text),
+                  min.segment.length = 0,
+                  max.overlaps = 100,
+                  position = pos, size = 2) +
+  scale_color_brewer(palette = "Dark2") +
+  scale_size_continuous(range = c(0.1, 5), breaks = seq(25, 300, 25)) +
+  scale_y_continuous(labels = scales::percent) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) +
+  labs(x = "Domain of capacity ('lens')", 
+       y = "Mean endorsements (normalized)",
+       # color = "Domain of capacity ('lens')",
+       size = "Sample size (N)") +
+  guides(#color = guide_legend(override.aes = list(alpha = 1, size = 2)),
+         color = guide_none(),
+         size = guide_legend(override.aes = list(alpha = 0.5)))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
